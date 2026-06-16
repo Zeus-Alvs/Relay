@@ -1,0 +1,54 @@
+# ====================
+# Arquivos de Build / Executáveis
+# ====================
+build/
+dist/
+*.spec
+Relay.exe
+Build_Final/
+Relay_Installer*.exe
+Relay.iss
+
+# ====================
+# Arquivos Sensíveis
+# ====================
+config/.env
+config/session.json
+config/rclone*.conf
+
+# ====================
+# Diretórios de Teste, Motor e Dependências Pesadas
+# ====================
+ambiente_teste/
+dependencias/jre/
+dependencias/motores/
+dependencias/*.exe
+
+
+# ====================
+# Python
+# ====================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+.venv/
+
+# ====================
+# Next.js (Webfront)
+# ====================
+webfront/node_modules/
+webfront/.next/
+webfront/out/
+webfront/.env*.local
+webfront/.vercel/
+
+# ====================
+# OS e IDE
+# ====================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

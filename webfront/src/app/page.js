@@ -244,12 +244,8 @@ function Download() {
             <p className="download-desc">Windows • ~700 MB (inclui 3 motores de servidor)</p>
 
             <a
-              href="#"
+              href="https://github.com/Zeus-Alvs/Relay/releases/download/installer/Relay_Installer.exe"
               className="btn btn-download"
-              onClick={(e) => {
-                e.preventDefault();
-                alert("Link de download será adicionado em breve!");
-              }}
             >
               ⬇ Baixar para Windows
             </a>

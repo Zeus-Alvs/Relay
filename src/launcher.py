@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import time
 import ctypes
+import re
 from dotenv import load_dotenv
 
 import pystray
@@ -498,6 +499,14 @@ class RelayLauncher(ctk.CTk):
         self.show_frame(self.frame_create_server)
 
     def carregar_hub(self):
+        # Se houver um processo Rclone pendente de autorização, matá-lo
+        if hasattr(self, 'rclone_auth_process') and self.rclone_auth_process:
+            try:
+                self.rclone_auth_process.kill()
+            except Exception: pass
+            self.rclone_auth_process = None
+            self._falha_gerar_token("Geração cancelada.")
+
         for widget in self.scroll_servidores.winfo_children(): widget.destroy() 
         servidores = obter_servidores_do_usuario(DB_URL, AUTH_TOKEN, self.logged_user)
         if not servidores:
@@ -536,8 +545,13 @@ class RelayLauncher(ctk.CTk):
         self.cs_duckd.pack(pady=5, fill="x", padx=20)
         self.cs_duckt = ctk.CTkEntry(self.frame_create_server, placeholder_text="DuckDNS Token")
         self.cs_duckt.pack(pady=5, fill="x", padx=20)
+        # Campo do token (pode continuar como entrada para fallback)
         self.cs_rclone = ctk.CTkEntry(self.frame_create_server, placeholder_text='Token da Drive ({"access_token":...})')
         self.cs_rclone.pack(pady=5, fill="x", padx=20)
+
+        # O NOVO BOTÃO MÁGICO
+        self.btn_gerar_rclone = ctk.CTkButton(self.frame_create_server, text="🔗 Autorizar Google Drive Automaticamente", fg_color="#cf8c00", hover_color="#a36e00", command=self.acao_gerar_rclone_token)
+        self.btn_gerar_rclone.pack(pady=(0, 5), fill="x", padx=20)
 
         frame_v = ctk.CTkFrame(self.frame_create_server, fg_color="transparent")
         frame_v.pack(pady=10, fill="x", padx=20)
@@ -676,6 +690,59 @@ class RelayLauncher(ctk.CTk):
             self.lbl_hub_welcome.configure(text=f"Bem-vindo(a), {retorno}")
             self.after(1000, self.carregar_hub)
         else: self.lbl_log_status.configure(text=retorno, text_color="red")
+
+    # ==========================================
+    # GERADOR DE TOKEN AUTOMÁTICO
+    # ==========================================
+    def acao_gerar_rclone_token(self):
+        """Inicia o processo invisível do Rclone e aguarda o navegador"""
+        self.btn_gerar_rclone.configure(state="disabled", text="⏳ Aguardando Autorização no Navegador...")
+        self.lbl_create_status.configure(text="Por favor, faça login no Google no navegador que acabou de abrir.", text_color="orange")
+        threading.Thread(target=self._worker_gerar_token, daemon=True).start()
+
+    def _worker_gerar_token(self):
+        rclone_exe = os.path.join(BASE_DIR, "dependencias", "rclone.exe")
+        comando = [rclone_exe, "authorize", "drive"]
+        
+        try:
+            # creationflags=0x08000000 garante que o terminal CMD preto NÃO vai piscar na tela
+            self.rclone_auth_process = subprocess.Popen(comando, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
+            
+            # Aguarda até 2 minutos para o utilizador autorizar
+            saida, erro = self.rclone_auth_process.communicate(timeout=120)
+
+            # A nossa captura cirúrgica: caça o bloco JSON exato no meio dos logs do Rclone
+            match = re.search(r'\{.*"access_token".*\}', saida, re.DOTALL)
+            
+            if match:
+                token_json = match.group(0)
+                self.after(0, self._preencher_token_sucesso, token_json)
+            else:
+                erro_msg = "Autorização cancelada ou falhou."
+                if "bind" in erro:
+                    erro_msg = "Erro: A porta de autorização está ocupada. Feche processos Rclone zumbis."
+                self.after(0, self._falha_gerar_token, erro_msg)
+                
+        except subprocess.TimeoutExpired:
+            if hasattr(self, 'rclone_auth_process') and self.rclone_auth_process:
+                self.rclone_auth_process.kill()
+            self.after(0, self._falha_gerar_token, "Tempo limite excedido. Tenta novamente.")
+        except Exception as e:
+            self.after(0, self._falha_gerar_token, f"Erro ao executar Rclone local: {e}")
+        finally:
+            self.rclone_auth_process = None
+
+    def _preencher_token_sucesso(self, token):
+        """Preenche o campo de texto e volta o botão ao normal"""
+        self.cs_rclone.delete(0, 'end')
+        self.cs_rclone.insert(0, token)
+        self.btn_gerar_rclone.configure(state="normal", text="✅ Autorizado com Sucesso!", fg_color="green")
+        self.lbl_create_status.configure(text="Google Drive vinculado!", text_color="green")
+
+    def _falha_gerar_token(self, erro):
+        """Trata o erro se a pessoa fechar o navegador sem autorizar"""
+        self.btn_gerar_rclone.configure(state="normal", text="🔗 Tentar Autorizar Novamente", fg_color="#cf8c00")
+        self.lbl_create_status.configure(text=erro, text_color="red")
 
     def acao_criar_servidor(self):
         nome = self.cs_nome.get().strip()

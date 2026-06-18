@@ -316,6 +316,18 @@ class RelayLauncher(ctk.CTk):
                 self.btn_stop.configure(state="normal") # LIBERA O STOP
                 self.btn_play.configure(text="SERVIDOR ONLINE", fg_color="#1f538d", state="disabled")
 
+    def _aplicar_icone_janela(self, janela):
+        try:
+            if getattr(sys, 'frozen', False):
+                icon_path = os.path.join(BASE_DIR, "relay_ico.ico")
+            else:
+                icon_path = os.path.join(CURRENT_DIR, "relay_ico.ico")
+            if os.path.exists(icon_path):
+                # Atraso de 200ms porque o CustomTkinter força o ícone padrão assincronamente ao criar Toplevels
+                janela.after(200, lambda: janela.iconbitmap(icon_path))
+        except Exception as e:
+            print(f"[Aviso] Falha ao carregar icone da sub-janela: {e}")
+
     # ==========================================
     # LÓGICA DE SYSTEM TRAY (BANDEJA DO SISTEMA)
     # ==========================================
@@ -619,6 +631,7 @@ class RelayLauncher(ctk.CTk):
 
     def abrir_janela_configuracoes(self):
         janela_cfg = ctk.CTkToplevel(self)
+        self._aplicar_icone_janela(janela_cfg)
         janela_cfg.title("Configurações do Servidor")
         janela_cfg.geometry("400x500")
         janela_cfg.attributes("-topmost", True)
@@ -661,6 +674,7 @@ class RelayLauncher(ctk.CTk):
 
     def abrir_modal_tailscale(self):
         janela_ts = ctk.CTkToplevel(self)
+        self._aplicar_icone_janela(janela_ts)
         janela_ts.title("Tailscale")
         janela_ts.geometry("350x230")
         janela_ts.attributes("-topmost", True)
@@ -816,6 +830,7 @@ class RelayLauncher(ctk.CTk):
             return
             
         janela_conf = ctk.CTkToplevel(self)
+        self._aplicar_icone_janela(janela_conf)
         janela_conf.title("SAIR DO SERVIDOR")
         janela_conf.geometry("350x200")
         janela_conf.attributes("-topmost", True)
@@ -846,6 +861,7 @@ class RelayLauncher(ctk.CTk):
             return
             
         janela_conf = ctk.CTkToplevel(self)
+        self._aplicar_icone_janela(janela_conf)
         janela_conf.title("DELETAR SERVIDOR")
         janela_conf.geometry("350x200")
         janela_conf.attributes("-topmost", True)
@@ -875,6 +891,7 @@ class RelayLauncher(ctk.CTk):
         if not codigo: return
         
         janela = ctk.CTkToplevel(self)
+        self._aplicar_icone_janela(janela)
         janela.title("Gerir Membros")
         janela.geometry("450x500")
         janela.attributes("-topmost", True)
@@ -948,6 +965,7 @@ class RelayLauncher(ctk.CTk):
                         if k in props: props[k] = v
 
         janela = ctk.CTkToplevel(self)
+        self._aplicar_icone_janela(janela)
         janela.title("Configurações do Servidor")
         janela.geometry("400x550")
         janela.attributes("-topmost", True)

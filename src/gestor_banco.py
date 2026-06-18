@@ -327,3 +327,14 @@ def promover_admin(db_url, auth_token, login_alvo, codigo_servidor):
     except Exception as e:
         logger.error(f"Erro ao promover admin: {e}")
         return False, "Erro de rede ao promover."
+
+def atualizar_tailscale_key(db_url, auth_token, codigo_servidor, nova_key):
+    """Atualiza a Tailscale Auth Key do servidor"""
+    url_base = _get_base_url(db_url)
+    url_chaves = f"{url_base}/servidores/{codigo_servidor}/chaves.json"
+    try:
+        requests.patch(url_chaves, params={'auth': auth_token}, json={"tailscale_key": nova_key}, timeout=5.0)
+        return True, "Auth Key do Tailscale atualizada com sucesso!"
+    except Exception as e:
+        logger.error(f"Erro ao atualizar chave do tailscale: {e}")
+        return False, "Erro de rede ao atualizar a chave."

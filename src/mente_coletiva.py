@@ -137,7 +137,15 @@ def executar_ciclo_host(nome_usuario, codigo_servidor, callback_status=None):
 
         # 1. O PEDÁGIO: Liga a VPN
         log_ui("Pagando pedágio: Conectando VPN (Tailscale)...", "orange")
-        tailscale_up(ts_key)
+        try:
+            tailscale_up(ts_key)
+        except ValueError as e:
+            if str(e) == "ERRO_TS_EXPIRADA":
+                log_ui("🛑 Tailscale Key Expirada ou Inválida! O Admin precisa atualizar.", "red")
+                time.sleep(5)
+                return
+            else:
+                raise e
         
         log_ui("Verificando cluster e Fila de Espera...", "orange")
         estado_cluster, etag = get_cluster_state(url_cluster, AUTH_TOKEN)

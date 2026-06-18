@@ -22,22 +22,34 @@ def _get_subprocess_kwargs() -> dict:
     return kwargs
 
 def tailscale_up(auth_key: str) -> bool:
-    # A flag --reset força o Tailscale a esquecer qualquer lixo anterior da máquina
+    """Sobe a VPN e lida com chaves expiradas/inválidas"""
     cmd = [r"C:\Program Files\Tailscale\tailscale.exe", "up", f"--authkey={auth_key}", "--reset"]
+    kwargs = _get_subprocess_kwargs()
     
     try:
         logger.info("Iniciando conexão com a rede Tailscale...")
-        # REMOVEMOS os **kwargs daqui para permitir que o handshake de primeira viagem ocorra livremente!
+        # O terminal fica oculto e capturamos tudo para ver se a chave expirou
+        processo = subprocess.run(cmd, capture_output=True, text=True, **kwargs)
         
-        subprocess.run(cmd, check=True)
+        saida_erro = processo.stderr.lower() if processo.stderr else ""
+        saida_normal = processo.stdout.lower() if processo.stdout else ""
+        
+        # Caçando o erro letal do Tailscale
+        if "expired" in saida_erro or "invalid authkey" in saida_erro or "expired" in saida_normal:
+            raise ValueError("ERRO_TS_EXPIRADA")
+            
+        if processo.returncode != 0:
+            raise Exception(f"Falha ao ligar VPN: {processo.stderr}")
+            
         logger.info("Conexão com Tailscale estabelecida com sucesso.")
         return True
+        
     except FileNotFoundError:
         logger.error("Erro: 'tailscale' não encontrado no PATH do sistema.")
         return False
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Falha ao executar 'tailscale up'. Código de erro: {e.returncode}")
-        return False
+    except ValueError as e:
+        # Repassa o erro específico de expiração para a mente_coletiva.py
+        raise e
     except Exception as e:
         logger.error(f"Erro inesperado em tailscale_up: {e}")
         return False

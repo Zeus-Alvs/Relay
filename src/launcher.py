@@ -19,7 +19,7 @@ from mente_coletiva import (executar_ciclo_host, release_firebase_lock, encerrar
 from gestor_banco import (cadastrar_usuario, fazer_login, alternar_fila, obter_dados_cluster, 
                           obter_servidores_do_usuario, criar_servidor, resgatar_convite, 
                           deletar_servidor, sair_do_servidor, obter_usuarios_servidor,
-                          expulsar_membro, promover_admin)
+                          expulsar_membro, promover_admin, atualizar_tailscale_key)
 
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
@@ -651,12 +651,49 @@ class RelayLauncher(ctk.CTk):
             ctk.CTkButton(frame_admin, text="⚙️ Configurações do Servidor", fg_color="transparent", border_width=1, text_color=("black", "white"), command=self.abrir_editor_properties).pack(pady=5, fill="x", padx=20)
             ctk.CTkButton(frame_admin, text="Abrir Pasta Local", fg_color="transparent", border_width=1, text_color=("black", "white"), command=self.acao_abrir_pasta).pack(pady=5, fill="x", padx=20)
             ctk.CTkButton(frame_admin, text="Upload de Mods/Plugins", fg_color="#cfa015", hover_color="#9e7b10", text_color="black", command=self.acao_forcar_upload_admin).pack(pady=5, fill="x", padx=20)
+            ctk.CTkButton(frame_admin, text="🔑 Trocar Auth Key Tailscale", fg_color="transparent", border_width=1, text_color=("black", "white"), command=self.abrir_modal_tailscale).pack(pady=5, fill="x", padx=20)
             ctk.CTkButton(frame_admin, text="👥 Gerir Membros do Servidor", fg_color="transparent", border_width=1, text_color=("black", "white"), command=self.abrir_lista_membros).pack(pady=5, fill="x", padx=20)
             ctk.CTkButton(frame_admin, text="🚨 Deletar Servidor (Irreversível)", fg_color="#8b0000", hover_color="#5e0000", command=self.confirmar_delecao_servidor).pack(pady=(5, 15), fill="x", padx=20)
         else:
             # Controlos de Membro
             btn_sair = ctk.CTkButton(janela_cfg, text="🚪 Sair do Servidor", fg_color="#cf8c00", hover_color="#a36e00", command=self.confirmar_saida_servidor)
             btn_sair.pack(pady=20, fill="x", padx=20)
+
+    def abrir_modal_tailscale(self):
+        janela_ts = ctk.CTkToplevel(self)
+        janela_ts.title("Tailscale")
+        janela_ts.geometry("350x230")
+        janela_ts.attributes("-topmost", True)
+        
+        janela_ts.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() // 2) - (350 // 2)
+        y = self.winfo_y() + (self.winfo_height() // 2) - (230 // 2)
+        janela_ts.geometry(f"+{x}+{y}")
+
+        ctk.CTkLabel(janela_ts, text="Trocar Auth Key", font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(20, 5))
+        ctk.CTkLabel(janela_ts, text="Cole a nova chave do Tailscale abaixo:", text_color="gray").pack(pady=(0, 10))
+        
+        entry_ts = ctk.CTkEntry(janela_ts, placeholder_text="tskey-auth-...", width=280)
+        entry_ts.pack(pady=5)
+        
+        lbl_status = ctk.CTkLabel(janela_ts, text="", text_color="red", font=ctk.CTkFont(size=12))
+        lbl_status.pack(pady=(2, 2))
+        
+        def salvar():
+            nova_key = entry_ts.get().strip()
+            if not nova_key:
+                lbl_status.configure(text="Insira a nova chave!", text_color="red")
+                return
+            
+            sucesso, msg = atualizar_tailscale_key(DB_URL, AUTH_TOKEN, self.servidor_atual, nova_key)
+            if sucesso:
+                lbl_status.configure(text=msg, text_color="green")
+                janela_ts.after(1500, janela_ts.destroy)
+            else:
+                lbl_status.configure(text=msg, text_color="red")
+
+        ctk.CTkButton(janela_ts, text="Salvar Nova Chave", fg_color="green", hover_color="darkgreen", command=salvar).pack(pady=(5, 10))
+
 
     def do_register(self):
         nome = self.reg_nome.get().strip()

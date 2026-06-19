@@ -545,6 +545,11 @@ class RelayLauncher(ctk.CTk):
                 try: shutil.copytree(origem, destino, dirs_exist_ok=True)
                 except Exception as e: print(f"[Aviso] Erro a transferir ficheiros: {e}")
             
+        # Bloqueio Preventivo (Race Condition)
+        # Trava os controlos até que o radar (monitor_radar_cluster) atualize o status real
+        self.lbl_bastao_user.configure(text="A carregar...")
+        self.btn_play.configure(state="disabled", text="A AGUARDAR SINAL...", fg_color="gray")
+
         self.show_frame(self.frame_dashboard)
 
     def build_create_server_screen(self):
@@ -643,10 +648,14 @@ class RelayLauncher(ctk.CTk):
         y = self.winfo_y() + (self.winfo_height() // 2) - (500 // 2)
         janela_cfg.geometry(f"+{x}+{y}")
 
+        # Verifica se o servidor está rodando (alguém está com o bastão)
+        is_server_online = self.lbl_bastao_user.cget("text") not in ["Ninguém (Vaga Livre)", "Ninguém", ""]
+        state_if_offline = "disabled" if is_server_online else "normal"
+
         # Secção: Gestão de Mundo Local
         frame_world = ctk.CTkFrame(janela_cfg, fg_color="transparent")
         frame_world.pack(pady=(20, 10), fill="x", padx=20)
-        btn_download = ctk.CTkButton(frame_world, text="Baixar Mundo", fg_color="#cf8c00", hover_color="#a36e00", command=self.acao_baixar_mundo_manual)
+        btn_download = ctk.CTkButton(frame_world, text="Baixar Mundo", fg_color="#cf8c00", hover_color="#a36e00", state=state_if_offline, command=self.acao_baixar_mundo_manual)
         btn_download.pack(side="left", expand=True, padx=(0, 5))
         btn_delete = ctk.CTkButton(frame_world, text="Deletar Local", fg_color="#8b0000", hover_color="#5e0000", command=self.acao_deletar_mundo)
         btn_delete.pack(side="right", expand=True, padx=(5, 0))
@@ -661,12 +670,12 @@ class RelayLauncher(ctk.CTk):
             frame_admin.pack(pady=10, fill="x", padx=20)
             ctk.CTkLabel(frame_admin, text="👑 Controles de Administrador", font=ctk.CTkFont(weight="bold"), text_color="#cfa015").pack(pady=(10, 5))
             
-            ctk.CTkButton(frame_admin, text="⚙️ Configurações do Servidor", fg_color="transparent", border_width=1, text_color=("black", "white"), command=self.abrir_editor_properties).pack(pady=5, fill="x", padx=20)
+            ctk.CTkButton(frame_admin, text="⚙️ Configurações do Servidor", fg_color="transparent", border_width=1, text_color=("black", "white"), state=state_if_offline, command=self.abrir_editor_properties).pack(pady=5, fill="x", padx=20)
             ctk.CTkButton(frame_admin, text="Abrir Pasta Local", fg_color="transparent", border_width=1, text_color=("black", "white"), command=self.acao_abrir_pasta).pack(pady=5, fill="x", padx=20)
-            ctk.CTkButton(frame_admin, text="Upload de Mods/Plugins", fg_color="#cfa015", hover_color="#9e7b10", text_color="black", command=self.acao_forcar_upload_admin).pack(pady=5, fill="x", padx=20)
+            ctk.CTkButton(frame_admin, text="Upload de Mods/Plugins", fg_color="#cfa015", hover_color="#9e7b10", text_color="black", state=state_if_offline, command=self.acao_forcar_upload_admin).pack(pady=5, fill="x", padx=20)
             ctk.CTkButton(frame_admin, text="🔑 Trocar Auth Key Tailscale", fg_color="transparent", border_width=1, text_color=("black", "white"), command=self.abrir_modal_tailscale).pack(pady=5, fill="x", padx=20)
             ctk.CTkButton(frame_admin, text="👥 Gerir Membros do Servidor", fg_color="transparent", border_width=1, text_color=("black", "white"), command=self.abrir_lista_membros).pack(pady=5, fill="x", padx=20)
-            ctk.CTkButton(frame_admin, text="🚨 Deletar Servidor (Irreversível)", fg_color="#8b0000", hover_color="#5e0000", command=self.confirmar_delecao_servidor).pack(pady=(5, 15), fill="x", padx=20)
+            ctk.CTkButton(frame_admin, text="🚨 Deletar Servidor (Irreversível)", fg_color="#8b0000", hover_color="#5e0000", state=state_if_offline, command=self.confirmar_delecao_servidor).pack(pady=(5, 15), fill="x", padx=20)
         else:
             # Controlos de Membro
             btn_sair = ctk.CTkButton(janela_cfg, text="🚪 Sair do Servidor", fg_color="#cf8c00", hover_color="#a36e00", command=self.confirmar_saida_servidor)
